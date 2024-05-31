@@ -75,7 +75,7 @@ jobs:
       - name: Build debug apk
         run: |
           chmod +x gradlew
-          ./gradlew assemblefordebug -Darch=all
+          ./gradlew assemblefordebug -Darch=arm_arm64
 
       - name: Upload debug apk
         uses: actions/upload-artifact@v4
