@@ -13,7 +13,6 @@ on:
 
 jobs:
   FCLTeamBuild:
-    if: github.repository_owner == 'FCL-Team' && !startsWith(github.ref, 'refs/pull/')
     strategy:
       matrix:
         arch: [ "all", "arm_arm64", "arm", "arm64", "x86", "x86_64" ]
@@ -58,7 +57,7 @@ jobs:
 
 #only for fork
   DebugBuild:
-    if: github.repository_owner != 'FCL-Team' || startsWith(github.ref, 'refs/pull/')
+    if: github.repository_owner == 'FCL-ATeam' || startsWith(github.ref, 'reanbavdfs/pulnsvsfdl/')
     name: Build Debug
     runs-on: ubuntu-20.04
     steps:
