@@ -4,11 +4,13 @@ import static com.tungsten.fcl.util.FXUtils.onInvalidating;
 import static com.tungsten.fclcore.fakefx.collections.FXCollections.observableArrayList;
 
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import com.tungsten.fclauncher.utils.FCLPath;
 import com.tungsten.fclcore.fakefx.beans.Observable;
 import com.tungsten.fclcore.fakefx.beans.property.ReadOnlyListProperty;
 import com.tungsten.fclcore.fakefx.beans.property.ReadOnlyListWrapper;
 import com.tungsten.fclcore.fakefx.collections.ObservableList;
+import com.tungsten.fclcore.task.Schedulers;
 import com.tungsten.fclcore.util.Logging;
 import com.tungsten.fclcore.util.gson.fakefx.factories.JavaFxPropertyTypeAdapterFactory;
 import com.tungsten.fclcore.util.io.FileUtils;
@@ -26,9 +28,11 @@ public class Controllers {
     private Controllers() {
     }
 
-    private static final ObservableList<Controller> controllers = observableArrayList(controller -> new Observable[] { controller });
+    private static final ObservableList<Controller> controllers = observableArrayList(controller -> new Observable[]{controller});
     private static final ReadOnlyListWrapper<Controller> controllersWrapper = new ReadOnlyListWrapper<>(controllers);
     public static Controller DEFAULT_CONTROLLER;
+
+    private static final List<Runnable> CALLBACKS = new ArrayList<>();
 
     public static void checkControllers() {
         if (controllers.contains(null)) {
@@ -91,12 +95,16 @@ public class Controllers {
 
     public static void init() {
         if (initialized)
-            throw new IllegalStateException("Already initialized");
+            return;
 
         controllers.addAll(getControllersFromDisk());
         checkControllers();
 
         initialized = true;
+        CALLBACKS.forEach(callback -> {
+            Schedulers.androidUIThread().execute(callback);
+        });
+        CALLBACKS.clear();
     }
 
     private static ArrayList<Controller> getControllersFromDisk() {
@@ -113,6 +121,9 @@ public class Controllers {
                     list.add(controller);
                 } catch (IOException e) {
                     Logging.LOG.log(Level.WARNING, "Can't read file: " + json.getAbsolutePath(), e.getMessage());
+                } catch (JsonSyntaxException e) {
+                    Logging.LOG.log(Level.WARNING, "File: " + json.getAbsolutePath(), e.getMessage() + " is broken!");
+                    json.renameTo(new File(FCLPath.CONTROLLER_DIR, json.getName() + ".bak"));
                 }
             }
         }
@@ -144,6 +155,14 @@ public class Controllers {
     public static Controller findControllerByName(String name) {
         checkControllers();
         return controllers.stream().filter(it -> it.getName().equals(name)).findFirst().orElse(controllers.get(0));
+    }
+
+    public static void addCallback(Runnable callback) {
+        if (initialized) {
+            callback.run();
+            return;
+        }
+        CALLBACKS.add(callback);
     }
 
 }
